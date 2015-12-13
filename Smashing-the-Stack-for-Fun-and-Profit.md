@@ -1,8 +1,8 @@
 #Smashing The Stack For Fun And Profit
-####by Aleph One
-####aleph1@underground.org
+####Originally written by Aleph One and few formatting done by avicoder
+####aleph1@underground.org 
 
-**smash the stack** [C programming] n. On many C implementations
+**Smash the Stack** *[C programming] n.* On many C implementations
 it is possible to corrupt the execution stack by writing past
 the end of an array declared auto in a routine.  Code that does
 this is said to smash the stack, and can cause return from the
@@ -14,8 +14,7 @@ never done intentionally. See spam; see also alias bug,
 fandango on core, memory leak, precedence lossage, overrun screw.
 
 
-                                 Introduction
-                                 ~~~~~~~~~~~~
+##Introduction
 
    Over the last few months there has been a large increase of buffer
 overflow vulnerabilities being both discovered and exploited.  Examples
@@ -28,31 +27,30 @@ memory concepts, and experience with gdb are very helpful but not necessary.
 We also assume we are working with an Intel x86 CPU, and that the operating 
 system is Linux.
 
-   Some basic definitions before we begin: A buffer is simply a contiguous 
+   Some basic definitions before we begin: **A buffer is simply a contiguous 
 block of computer memory that holds multiple instances of the same data 
-type.  C programmers normally associate with the word buffer arrays. Most 
+type.**  C programmers normally associate with the word buffer arrays. Most 
 commonly, character arrays.  Arrays, like all variables in C, can be 
-declared either static or dynamic.  Static variables are allocated at load 
-time on the data segment.  Dynamic variables are allocated at run time on 
+declared either static or dynamic.  **Static variables** are allocated at load 
+time on the data segment.  **Dynamic variables** are allocated at run time on 
 the stack. To overflow is to flow, or fill over the top, brims, or bounds. 
 We will concern ourselves only with the overflow of dynamic buffers, otherwise
-known as stack-based buffer overflows.
+known as ___stack-based buffer overflows___.
 
 
-                          Process Memory Organization
-                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##Process Memory Organization
 
    To understand what stack buffers are we must first understand how a
 process is organized in memory.  Processes are divided into three regions:
-Text, Data, and Stack.  We will concentrate on the stack region, but first
+**Text, Data, and Stack.**  We will concentrate on the stack region, but first
 a small overview of the other regions is in order.
 
-   The text region is fixed by the program and includes code (instructions)
-and read-only data.  This region corresponds to the text section of the
++ **Text region** is fixed by the program and includes code (instructions)
+and *read-only data*.  This region corresponds to the text section of the
 executable file.  This region is normally marked read-only and any attempt to
-write to it will result in a segmentation violation.
+write to it will result in a **segmentation violation**.
 
-   The data region contains initialized and uninitialized data.  Static
++ **Data region** contains initialized and uninitialized data.  Static
 variables are stored in this region.  The data region corresponds to the
 data-bss sections of the executable file.  Its size can be changed with the
 brk(2) system call.  If the expansion of the bss data or the user stack
@@ -60,30 +58,15 @@ exhausts available memory, the process is blocked and is rescheduled to
 run again with a larger memory space. New memory is added between the data
 and stack segments.
 
-                             /------------------\  lower
-                             |                  |  memory
-                             |       Text       |  addresses
-                             |                  |
-                             |------------------|
-                             |   (Initialized)  |
-                             |        Data      |
-                             |  (Uninitialized) |
-                             |------------------|
-                             |                  |
-                             |       Stack      |  higher
-                             |                  |  memory
-                             \------------------/  addresses
-
-                         Fig. 1 Process Memory Regions
+![fig 1.](http://i.imgur.com/f529pY7.png)
 
 
-                               What Is A Stack?
-                               ~~~~~~~~~~~~~~~~
+##What is a Stack?
 
    A stack is an abstract data type frequently used in computer science.  A
 stack of objects has the property that the last object placed on the stack
 will be the first object removed.  This property is commonly referred to as
-last in, first out queue, or a LIFO.
+last in, first out queue, or a *LIFO*.
 
    Several operations are defined on stacks.  Two of the most important are
 PUSH and POP.  PUSH adds an element at the top of the stack.  POP, in 
@@ -91,12 +74,11 @@ contrast, reduces the stack size by one by removing the last element at the
 top of the stack.
 
 
-                            Why Do We Use A Stack?
-                            ~~~~~~~~~~~~~~~~~~~~~~
+##Why do We use a Stack?
 
    Modern computers are designed with the need of high-level languages in
 mind.  The most important technique for structuring programs introduced by
-high-level languages is the procedure or function.  From one point of view, a
+high-level languages is the *procedure or function*.  From one point of view, a
 procedure call alters the flow of control just as a jump does, but unlike a
 jump, when finished performing its task, a function returns control to the 
 statement or instruction following the call.  This high-level abstraction
@@ -107,11 +89,10 @@ functions, to pass parameters to the functions, and to return values from the
 function.
 
 
-                               The Stack Region
-                               ~~~~~~~~~~~~~~~~
+##The Stack Region
 
-   A stack is a contiguous block of memory containing data.  A register called
-the stack pointer (SP) points to the top of the stack.  The bottom of the 
+   *A stack is a contiguous block of memory containing data.*  A register called
+the **stack pointer** (SP) points to the top of the stack.  The bottom of the 
 stack is at a fixed address.  Its size is dynamically adjusted by the kernel 
 at run time. The CPU implements instructions to PUSH onto and POP off of the 
 stack. 
@@ -125,8 +106,8 @@ time of the function call.
    Depending on the implementation the stack will either grow down (towards
 lower memory addresses), or up.  In our examples we'll use a stack that grows
 down.  This is the way the stack grows on many computers including the Intel, 
-Motorola, SPARC and MIPS processors.  The stack pointer (SP) is also
-implementation dependent.  It may point to the last address on the stack, or 
+Motorola, SPARC and MIPS processors.  *The stack pointer (SP) is also
+implementation dependent.*  It may point to the last address on the stack, or 
 to the next free available address after the stack.  For our discussion we'll
 assume it points to the last address on the stack.
 
@@ -152,69 +133,61 @@ positive offsets and local variables have negative offsets from FP.
    The first thing a procedure must do when called is save the previous FP
 (so it can be restored at procedure exit).  Then it copies SP into FP to 
 create the new FP, and advances SP to reserve space for the local variables. 
-This code is called the procedure prolog.  Upon procedure exit, the stack 
-must be cleaned up again, something called the procedure epilog.  The Intel 
-ENTER and LEAVE instructions and the Motorola LINK and UNLINK instructions, 
+This code is called the **procedure prolog**.  Upon procedure exit, the stack 
+must be cleaned up again, something called the **procedure epilog**.  The Intel 
+*ENTER* and *LEAVE* instructions and the Motorola LINK and UNLINK instructions, 
 have been provided to do most of the procedure prolog and epilog work 
 efficiently. 
 
-   Let us see what the stack looks like in a simple example:
+####Let us see what the stack looks like in a simple example:
 
-example1.c:
-------------------------------------------------------------------------------
-void function(int a, int b, int c) {
-   char buffer1[5];
-   char buffer2[10];
-}
+example1.c
 
-void main() {
-  function(1,2,3);
-}
-------------------------------------------------------------------------------
+	void function(int a, int b, int c) {
+    	char buffer1[5];
+   		char buffer2[10];
+	}
 
-   To understand what the program does to call function() we compile it with
-gcc using the -S switch to generate assembly code output:
+	void main() {
+  		function(1,2,3);
+	}
+    
+To understand what the program does to call `function()` we compile it with
+gcc using the `-S` switch to generate assembly code output:
 
-$ gcc -S -o example1.s example1.c
+`$ gcc -S -o example1.s example1.c`
 
    By looking at the assembly language output we see that the call to
 function() is translated to:
 
-        pushl $3
-        pushl $2
-        pushl $1
-        call function
+	pushl $3
+	pushl $2
+	pushl $1
+	call function
 
-    This pushes the 3 arguments to function backwards into the stack, and
-calls function().  The instruction 'call' will push the instruction pointer
-(IP) onto the stack.  We'll call the saved IP the return address (RET).  The
-first thing done in function is the procedure prolog:
+This pushes the 3 arguments to function backwards into the stack, and
+calls function().  The instruction `call` will push the instruction pointer
+(IP) onto the stack.  We'll call the saved IP the return address (RET).  *The
+first thing done in function is the procedure prolog:*
 
-        pushl %ebp
-        movl %esp,%ebp
-        subl $20,%esp
+	pushl %ebp
+	movl %esp,%ebp
+	subl $20,%esp
 
-   This pushes EBP, the frame pointer, onto the stack.  It then copies the
+This pushes EBP, the frame pointer, onto the stack.  It then copies the
 current SP onto EBP, making it the new FP pointer.  We'll call the saved FP
 pointer SFP.  It then allocates space for the local variables by subtracting
 their size from SP.
 
-   We must remember that memory can only be addressed in multiples of the
+   **We must remember that memory can only be addressed in multiples of the
 word size.  A word in our case is 4 bytes, or 32 bits.  So our 5 byte buffer
 is really going to take 8 bytes (2 words) of memory, and our 10 byte buffer
 is going to take 12 bytes (3 words) of memory.  That is why SP is being
-subtracted by 20.  With that in mind our stack looks like this when
-function() is called (each space represents a byte):
+subtracted by 20.**  
 
+With that in mind our stack looks like this when function() is called (each space represents a byte):
 
-bottom of                                                            top of
-memory                                                               memory
-           buffer2       buffer1   sfp   ret   a     b     c
-<------   [            ][        ][    ][    ][    ][    ][    ]
-	   
-top of                                                            bottom of
-stack                                                                 stack
-
+![function called](http://i.imgur.com/AwLd7nB.png)
 
                                Buffer Overflows
                                ~~~~~~~~~~~~~~~~
@@ -1733,4 +1706,3 @@ void usage(void) {
     "usage: eggshell [-a <alignment>] [-b <buffersize>] [-e <eggsize>] [-o <offset>]\n");
 }
 ------------------------------------------------------------------------------
-

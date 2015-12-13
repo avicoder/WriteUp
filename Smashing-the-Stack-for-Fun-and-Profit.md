@@ -1,19 +1,17 @@
- Smashing The Stack For Fun And Profit
+#Smashing The Stack For Fun And Profit
+####by Aleph One
+####aleph1@underground.org
 
-
-                                 by Aleph One
-                             aleph1@underground.org
-
-	`smash the stack` [C programming] n. On many C implementations
-	it is possible to corrupt the execution stack by writing past
-	the end of an array declared auto in a routine.  Code that does
-	this is said to smash the stack, and can cause return from the
-	routine to jump to a random address.  This can produce some of
-	the most insidious data-dependent bugs known to mankind.
-	Variants include trash the stack, scribble the stack, mangle
-	the stack; the term mung the stack is not used, as this is
-	never done intentionally. See spam; see also alias bug,
-	fandango on core, memory leak, precedence lossage, overrun screw.
+**smash the stack** [C programming] n. On many C implementations
+it is possible to corrupt the execution stack by writing past
+the end of an array declared auto in a routine.  Code that does
+this is said to smash the stack, and can cause return from the
+routine to jump to a random address.  This can produce some of
+the most insidious data-dependent bugs known to mankind.
+Variants include trash the stack, scribble the stack, mangle
+the stack; the term mung the stack is not used, as this is
+never done intentionally. See spam; see also alias bug,
+fandango on core, memory leak, precedence lossage, overrun screw.
 
 
                                  Introduction

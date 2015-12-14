@@ -187,143 +187,124 @@ subtracted by 20.**
 
 With that in mind our stack looks like this when function() is called (each space represents a byte):
 
-![function called](http://i.imgur.com/AwLd7nB.png)
+![Fig. 2](http://i.imgur.com/AwLd7nB.png)
 
-                               Buffer Overflows
-                               ~~~~~~~~~~~~~~~~
+##Buffer Overflows
 
-   A buffer overflow is the result of stuffing more data into a buffer than
+A buffer overflow is the result of stuffing more data into a buffer than
 it can handle.  How can this often found programming error can be taken
 advantage to execute arbitrary code?  Lets look at another example:
 
-example2.c
-------------------------------------------------------------------------------
-void function(char *str) {
-   char buffer[16];
+*example2.c*
 
-   strcpy(buffer,str);
-}
+	void function(char *str) {
+		char buffer[16];
+		strcpy(buffer,str);
+	}
 
-void main() {
-  char large_string[256];
-  int i;
+	void main() {
+  		char large_string[256];
+  		int i;
 
-  for( i = 0; i < 255; i++)
-    large_string[i] = 'A';
+  	for( i = 0; i < 255; i++)
+    	large_string[i] = 'A';
 
-  function(large_string);
-}
-------------------------------------------------------------------------------
-
-   This is program has a function with a typical buffer overflow coding
+  	function(large_string);
+	}
+    
+This is program has a function with a typical buffer overflow coding
 error.  The function copies a supplied string without bounds checking by
 using strcpy() instead of strncpy().  If you run this program you will get a
 segmentation violation.  Lets see what its stack looks when we call function:
 
+![fig 3.](http://i.imgur.com/2iHqyhu.png)
 
-bottom of                                                            top of
-memory                                                               memory
-                  buffer            sfp   ret   *str
-<------          [                ][    ][    ][    ]
-
-top of                                                            bottom of
-stack                                                                 stack
-
-
-   What is going on here?  Why do we get a segmentation violation?  Simple.
-strcpy() is coping the contents of *str (larger_string[]) into buffer[]
-until a null character is found on the string.  As we can see buffer[] is
-much smaller than *str.  buffer[] is 16 bytes long, and we are trying to stuff
-it with 256 bytes.  This means that all 250 bytes after buffer in the stack
-are being overwritten.  This includes the SFP, RET, and even *str!  We had 
+What is going on here?  Why do we get a segmentation violation?  Simple.
+`strcpy()` is coping the contents of `*str` *(larger_string[])* into `buffer[]`
+until a null character is found on the string.  As we can see `buffer[]` is
+much smaller than `*str`.  `buffer[]` is 16 bytes long, and we are trying to stuff
+it with 256 bytes.  **This means that all 250 bytes after buffer in the stack
+are being overwritten**.  This includes the `SFP`, `RET`, and even `*str`!  We had 
 filled large_string with the character 'A'.  It's hex character value
-is 0x41.  That means that the return address is now 0x41414141.  This is
+is `0x41`.  That means that the return address is now `0x41414141`.  This is
 outside of the process address space.  That is why when the function returns
 and tries to read the next instruction from that address you get a 
-segmentation violation.
+**segmentation violation**.
 
-   So a buffer overflow allows us to change the return address of a function.
-In this way we can change the flow of execution of the program.  Lets go back
+**So a buffer overflow allows us to change the return address of a function**.
+   
+*In this way we can change the flow of execution of the program.*  Lets go back
 to our first example and recall what the stack looked like:
 
 
-bottom of                                                            top of
-memory                                                               memory
-           buffer2       buffer1   sfp   ret   a     b     c
-<------   [            ][        ][    ][    ][    ][    ][    ]
-
-top of                                                            bottom of
-stack                                                                 stack
+![Fig. 4](http://i.imgur.com/AwLd7nB.png)
 
 
-   Lets try to modify our first example so that it overwrites the return
+Lets try to modify our first example so that it overwrites the return
 address, and demonstrate how we can make it execute arbitrary code.  Just
-before buffer1[] on the stack is SFP, and before it, the return address.
-That is 4 bytes pass the end of buffer1[].  But remember that buffer1[] is
-really 2 word so its 8 bytes long.  So the return address is 12 bytes from
-the start of buffer1[].  We'll modify the return value in such a way that the
-assignment statement 'x = 1;' after the function call will be jumped.  To do
+before `buffer1[]` on the stack is `SFP`, and before it, the `return` address.
+That is 4 bytes pass the end of `buffer1[]`.  But remember that `buffer1[]` is
+really 2 word so its 8 bytes long.  So the `return` address is 12 bytes from
+the start of `buffer1[]`.  We'll modify the `return` value in such a way that the
+assignment statement `'x = 1;'` after the function call will be jumped.  To do
 so we add 8 bytes to the return address.  Our code is now:
 
-example3.c:
-------------------------------------------------------------------------------
-void function(int a, int b, int c) {
-   char buffer1[5];
-   char buffer2[10];
-   int *ret;
+*example3.c:*
 
-   ret = buffer1 + 12;
-   (*ret) += 8;
-}
+	void function(int a, int b, int c) {
+   		char buffer1[5];
+   		char buffer2[10];
+   		int *ret;
 
-void main() {
-  int x;
+   		ret = buffer1 + 12;
+   		(*ret) += 8;
+	}
 
-  x = 0;
-  function(1,2,3);
-  x = 1;
-  printf("%d\n",x);
-}
-------------------------------------------------------------------------------
+	void main() {
+  	int x;
+	x = 0;
+  	function(1,2,3);
+  	x = 1;
+  	printf("%d\n",x);
+	}
 
-   What we have done is add 12 to buffer1[]'s address.  This new address is
+What we have done is add 12 to *buffer1[]*'s address.  This new address is
 where the return address is stored.  We want to skip pass the assignment to
-the printf call.  How did we know to add 8 to the return address?  We used a
-test value first (for example 1), compiled the program, and then started gdb:
+the *printf* call.  How did we know to add 8 to the return address?  We used a
+test value first *(for example 1)*, compiled the program, and then started gdb:
 
-------------------------------------------------------------------------------
-[aleph1]$ gdb example3
-GDB is free software and you are welcome to distribute copies of it
- under certain conditions; type "show copying" to see the conditions.
-There is absolutely no warranty for GDB; type "show warranty" for details.
-GDB 4.15 (i586-unknown-linux), Copyright 1995 Free Software Foundation, Inc...
-(no debugging symbols found)...
-(gdb) disassemble main
-Dump of assembler code for function main:
-0x8000490 <main>:       pushl  %ebp
-0x8000491 <main+1>:     movl   %esp,%ebp
-0x8000493 <main+3>:     subl   $0x4,%esp
-0x8000496 <main+6>:     movl   $0x0,0xfffffffc(%ebp)
-0x800049d <main+13>:    pushl  $0x3
-0x800049f <main+15>:    pushl  $0x2
-0x80004a1 <main+17>:    pushl  $0x1
-0x80004a3 <main+19>:    call   0x8000470 <function>
-0x80004a8 <main+24>:    addl   $0xc,%esp
-0x80004ab <main+27>:    movl   $0x1,0xfffffffc(%ebp)
-0x80004b2 <main+34>:    movl   0xfffffffc(%ebp),%eax
-0x80004b5 <main+37>:    pushl  %eax
-0x80004b6 <main+38>:    pushl  $0x80004f8
-0x80004bb <main+43>:    call   0x8000378 <printf>
-0x80004c0 <main+48>:    addl   $0x8,%esp
-0x80004c3 <main+51>:    movl   %ebp,%esp
-0x80004c5 <main+53>:    popl   %ebp
-0x80004c6 <main+54>:    ret
-0x80004c7 <main+55>:    nop
-------------------------------------------------------------------------------
+`[aleph1]$ gdb example3`
 
-   We can see that when calling function() the RET will be 0x8004a8, and we
-want to jump past the assignment at 0x80004ab.  The next instruction we want
-to execute is the at 0x8004b2.  A little math tells us the distance is 8
+	GDB is free software and you are welcome to distribute copies of it
+	under certain conditions; type "show copying" to see the conditions.
+	There is absolutely no warranty for GDB; type "show warranty" for details.
+	GDB 4.15 (i586-unknown-linux), Copyright 1995 Free Software Foundation, Inc...
+	(no debugging symbols found)...
+	(gdb) disassemble main
+	Dump of assembler code for function main:
+	0x8000490 <main>:       pushl  %ebp
+	0x8000491 <main+1>:     movl   %esp,%ebp
+	0x8000493 <main+3>:     subl   $0x4,%esp
+	0x8000496 <main+6>:     movl   $0x0,0xfffffffc(%ebp)
+	0x800049d <main+13>:    pushl  $0x3
+	0x800049f <main+15>:    pushl  $0x2
+	0x80004a1 <main+17>:    pushl  $0x1
+	0x80004a3 <main+19>:    call   0x8000470 <function>
+	0x80004a8 <main+24>:    addl   $0xc,%esp
+	0x80004ab <main+27>:    movl   $0x1,0xfffffffc(%ebp)
+	0x80004b2 <main+34>:    movl   0xfffffffc(%ebp),%eax
+	0x80004b5 <main+37>:    pushl  %eax
+	0x80004b6 <main+38>:    pushl  $0x80004f8
+	0x80004bb <main+43>:    call   0x8000378 <printf>
+	0x80004c0 <main+48>:    addl   $0x8,%esp
+	0x80004c3 <main+51>:    movl   %ebp,%esp
+	0x80004c5 <main+53>:    popl   %ebp
+	0x80004c6 <main+54>:    ret
+	0x80004c7 <main+55>:    nop
+
+We can see that when calling `function()` the RET will be `0x8004a8`, and we
+want to jump past the assignment at `0x80004ab`.  The next instruction we want
+to execute is the at `0x8004b2`.  A little math tells us the distance is 8
 bytes.
 
 

